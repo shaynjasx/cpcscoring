@@ -363,18 +363,12 @@ footer.app-footer .heart{color:var(--lime);}
       </div>
 
       <div class="card">
-        <h3>Team A</h3>
-        <div class="score-controls">
-          <button class="adj" onclick="adjScore('A',-1)">−</button>
-          <button class="adj" onclick="adjScore('A',1)">+</button>
-        </div>
+        <h3>Team A Score</h3>
+        <input type="number" id="scoreInputA" min="0" value="0" oninput="updateTypedScore()">
       </div>
       <div class="card">
-        <h3>Team B</h3>
-        <div class="score-controls">
-          <button class="adj" onclick="adjScore('B',-1)">−</button>
-          <button class="adj" onclick="adjScore('B',1)">+</button>
-        </div>
+        <h3>Team B Score</h3>
+        <input type="number" id="scoreInputB" min="0" value="0" oninput="updateTypedScore()">
       </div>
 
       <button class="btn btn-primary" onclick="finishMatch()" id="finishBtn" disabled>Finish game</button>
@@ -395,7 +389,13 @@ footer.app-footer .heart{color:var(--lime);}
         <div style="font-size:20px; font-weight:700" id="finalStatsMvp"></div>
       </div>
 
-      <button class="btn btn-ghost" onclick="shareResults()" style="margin-bottom:10px;">Share Results / Copy Link</button>
+      
+      <div class="card">
+        <h3>Match History</h3>
+        <div id="matchHistoryList"></div>
+      </div>
+
+<button class="btn btn-ghost" onclick="shareResults()" style="margin-bottom:10px;">Share Results / Copy Link</button>
       <button class="btn btn-primary" onclick="closeFinalStats()">Done</button>
     </section>
   </main>
@@ -447,6 +447,7 @@ let openActive=false;
 let scoringContext=null; // {courtIdx}
 let editingPlayerId=null;
 let editingCourtIdx=null;
+let matchHistory=[]; // completed games
 
 /* ============================================================
    UTIL
@@ -843,14 +844,12 @@ function clearCourt(courtIdx){
 function openScoreCourt(courtIdx){
   const court=openCourts[courtIdx];
   scoringContext={courtIdx};
-  el('teamAName').textContent=court.teamA.map(id=>playerName(id,openPlayers)).join(' / ');
-  el('teamBName').textContent=court.teamB.map(id=>playerName(id,openPlayers)).join(' / ');
-  el('teamAScore').textContent=court.scoreA;
-  el('teamBScore').textContent=court.scoreB;
-  el('teamAScoreBlock').classList.remove('leading');
-  el('teamBScoreBlock').classList.remove('leading');
-  el('scoreMeta').textContent=`Court ${court.courtNum} · to ${openSettings.points}, win by 2`;
-  updateFinishButton();
+  teamAName.textContent=court.teamA.map(id=>playerName(id,openPlayers)).join(' / ');
+  teamBName.textContent=court.teamB.map(id=>playerName(id,openPlayers)).join(' / ');
+  scoreInputA.value=court.scoreA;
+  scoreInputB.value=court.scoreB;
+  updateTypedScore();
+  scoreMeta.textContent=`Court ${court.courtNum} · to ${openSettings.points}, win by 2`;
   showScreen('screenScoring');
 }
 
@@ -866,6 +865,15 @@ function completeOpenGame(courtIdx, winnerSide){
     if(winners.includes(id)) p.wins++;
     else p.losses++;
     p.status='waiting';
+  });
+
+  matchHistory.unshift({
+    game: matchHistory.length+1,
+    court:court.courtNum,
+    winners:winners.map(id=>playerName(id,openPlayers)),
+    losers:losers.map(id=>playerName(id,openPlayers)),
+    score:`${court.scoreA}-${court.scoreB}`,
+    duration: court.startTime ? Date.now()-court.startTime : 0
   });
 
   // Break up previous teams to encourage new partners
@@ -920,6 +928,24 @@ function showOpenFinalStats(){
     mvpCard.style.display='none';
   }
 
+  const mh=el('matchHistoryList');
+  if(matchHistory.length===0){
+    mh.innerHTML='<div class="subtle">No completed matches.</div>';
+  }else{
+    mh.innerHTML=matchHistory.map(m=>`
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:rgba(255,255,255,.03)">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--lime)">
+          <span>Game #${m.game}</span>
+          <span>Court ${m.court}</span>
+        </div>
+        <div style="margin-top:8px;color:var(--lime);font-weight:700">🏆 ${m.winners.join(' & ')}</div>
+        <div style="margin:6px 0;text-align:center;opacity:.5">VS</div>
+        <div>${m.losers.join(' & ')}</div>
+        <div style="margin-top:8px;font-size:11px;opacity:.6">Score ${m.score} • ${formatDuration(m.duration)}</div>
+      </div>
+    `).join('');
+  }
+
   showScreen('screenFinalStats');
 }
 
@@ -934,25 +960,25 @@ function closeFinalStats(){
 /* ============================================================
    SCORING
 =============================================================*/
-function adjScore(side, delta){
+function updateTypedScore(){
   if(!scoringContext) return;
-  let scoreA=parseInt(el('teamAScore').textContent);
-  let scoreB=parseInt(el('teamBScore').textContent);
-  if(side==='A') scoreA=Math.max(0,scoreA+delta);
-  else scoreB=Math.max(0,scoreB+delta);
-  el('teamAScore').textContent=scoreA;
-  el('teamBScore').textContent=scoreB;
-  el('teamAScoreBlock').classList.toggle('leading', scoreA>scoreB);
-  el('teamBScoreBlock').classList.toggle('leading', scoreB>scoreA);
-
+  const scoreA=Math.max(0,parseInt(scoreInputA.value)||0);
+  const scoreB=Math.max(0,parseInt(scoreInputB.value)||0);
+  scoreInputA.value=scoreA;
+  scoreInputB.value=scoreB;
+  teamAScore.textContent=scoreA;
+  teamBScore.textContent=scoreB;
+  teamAScoreBlock.classList.toggle('leading',scoreA>scoreB);
+  teamBScoreBlock.classList.toggle('leading',scoreB>scoreA);
   openCourts[scoringContext.courtIdx].scoreA=scoreA;
   openCourts[scoringContext.courtIdx].scoreB=scoreB;
+  renderOpenLive();
   updateFinishButton();
 }
 
 function updateFinishButton(){
-  const scoreA=parseInt(el('teamAScore').textContent);
-  const scoreB=parseInt(el('teamBScore').textContent);
+  const scoreA=parseInt(scoreInputA.value)||0;
+  const scoreB=parseInt(scoreInputB.value)||0;
   const pts=openSettings.points;
   const gameOver = (scoreA>=pts || scoreB>=pts) && Math.abs(scoreA-scoreB)>=2;
   el('finishBtn').disabled=!gameOver;
@@ -962,8 +988,8 @@ function updateFinishButton(){
 }
 
 function finishMatch(){
-  const scoreA=parseInt(el('teamAScore').textContent);
-  const scoreB=parseInt(el('teamBScore').textContent);
+  const scoreA=parseInt(scoreInputA.value)||0;
+  const scoreB=parseInt(scoreInputB.value)||0;
   if(!scoringContext) return;
   const winnerSide = scoreA>scoreB ? 'A':'B';
   completeOpenGame(scoringContext.courtIdx, winnerSide);
