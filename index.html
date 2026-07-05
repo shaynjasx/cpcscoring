@@ -899,7 +899,7 @@ function showOpenFinalStats(){
       const wr = p.gamesPlayed ? Math.round((p.wins/p.gamesPlayed)*100) : 0;
       return `<tr><td>${i+1}</td><td>${p.name}</td><td class="num">${p.wins}</td><td class="num">${p.losses}</td><td class="num">${p.gamesPlayed}</td><td class="num">${wr}%</td></tr>`;
     }).join('');
-    table.innerHTML=`<tr><th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">GP</th><th class="num">Win%</th></tr>${rows}`;
+    table.innerHTML=`<tr><th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">Games Played</th><th class="num">Win%</th></tr>${rows}`;
   }
 
   const mvpCard=el('finalStatsMvpCard');
