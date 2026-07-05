@@ -140,6 +140,12 @@ select{appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns
 .player-row{display:flex; gap:8px; margin-bottom:10px;}
 .player-row input{margin-bottom:0;}
 
+/* ---------- Editable player chip in live view ---------- */
+.chip.editable{gap:8px; padding-right:6px;}
+.chip.editable .edit-btn{background:none; border:none; color:var(--lime); cursor:pointer; font-size:12px; padding:0; line-height:1;}
+.chip.editable .remove-btn{background:none; border:none; color:var(--clay); cursor:pointer; font-size:14px; padding:0; line-height:1;}
+.chip.editable .status-dot{margin-right:2px;}
+
 /* ---------- Courts / queue ---------- */
 .court-block{
   border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px;
@@ -148,17 +154,23 @@ select{appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns
 .court-block .court-label{
   font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--lime); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;
 }
+.court-label .label-left{display:flex; align-items:center; gap:8px;}
+.court-timer{font-family:var(--mono); font-size:11px; color:var(--chalk); background:rgba(244,242,233,0.08); padding:2px 8px; border-radius:6px;}
 .team-line{display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:14.5px;}
 .team-line + .team-line{border-top:1px dashed var(--line);}
 .vs{font-family:var(--mono); font-size:11px; color:rgba(244,242,233,0.4); text-align:center; padding:2px 0;}
+.court-actions{display:flex; gap:8px; margin-top:10px;}
+.court-actions .btn{flex:1;}
 
 .queue-strip{display:flex; gap:8px; overflow-x:auto; padding:4px 0 8px;}
 .queue-strip::-webkit-scrollbar{display:none;}
 .queue-chip{
   flex:none; font-family:var(--mono); font-size:12px; padding:8px 12px; border-radius:10px;
   background:rgba(244,242,233,0.05); border:1px solid var(--line); white-space:nowrap;
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
 }
 .queue-chip .num{color:var(--lime); margin-right:6px;}
+.queue-chip .wait-time{font-size:10px; color:rgba(244,242,233,0.4);}
 
 /* ---------- Scoreboard ---------- */
 .scoreboard{
@@ -202,6 +214,21 @@ table.standings tr:first-child td{color:var(--lime); font-weight:600;}
 
 ::-webkit-scrollbar{width:0;height:0;}
 
+/* ---------- Modal ---------- */
+.modal-overlay{
+  display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center;
+  background:rgba(9,39,32,0.75); padding:20px;
+}
+.modal-overlay.show{display:flex;}
+.modal-box{
+  width:100%; max-width:380px; background:var(--court-deep); border:1px solid var(--line);
+  border-radius:16px; padding:20px; max-height:85vh; overflow-y:auto;
+}
+.modal-box h3{margin:0 0 14px; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:rgba(244,242,233,0.6);}
+.modal-box input,.modal-box select{margin-bottom:16px;}
+.modal-box label{margin-top:2px;}
+.modal-actions{display:flex; gap:10px;}
+
 /* ---------- Footer ---------- */
 footer.app-footer{
   position:relative; z-index:1; text-align:center; padding:20px 20px 26px;
@@ -232,7 +259,7 @@ footer.app-footer .heart{color:var(--lime);}
     <!-- ============ SETUP ============ -->
     <section class="screen active" id="screenOpenSetup">
       <div class="section-title">Start open play</div>
-      <p class="subtle">Add everyone checking in, set your courts, and CPCScore builds the queue and rotates winners/losers automatically.</p>
+      <p class="subtle">Add everyone checking in, set your courts, and CPC Scoring builds the queue and rotates winners/losers automatically.</p>
 
       <div class="card">
         <h3>Players checked in (<span id="opCount">0</span>)</h3>
@@ -274,10 +301,45 @@ footer.app-footer .heart{color:var(--lime);}
       </div>
 
       <div class="card">
-        <h3>Waiting / all players</h3>
+        <h3>Manage players (<span id="opLiveCount">0</span>)</h3>
+        <div class="player-row">
+          <input type="text" id="opLiveAddInput" placeholder="Add a new player" onkeydown="if(event.key==='Enter')addLivePlayer()">
+          <button class="btn btn-primary btn-sm" onclick="addLivePlayer()">Add</button>
+        </div>
         <div class="player-list" id="opLivePlayerList"></div>
       </div>
     </section>
+
+    <!-- ============ EDIT PLAYER NAME MODAL ============ -->
+    <div class="modal-overlay" id="editPlayerModal">
+      <div class="modal-box">
+        <h3>Edit player name</h3>
+        <input type="text" id="editPlayerInput">
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeEditPlayerModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveEditPlayer()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ EDIT COURT LINEUP MODAL ============ -->
+    <div class="modal-overlay" id="editCourtModal">
+      <div class="modal-box">
+        <h3 id="editCourtTitle">Edit court lineup</h3>
+        <label>Team A — Player 1</label>
+        <select id="slotA1"></select>
+        <label>Team A — Player 2</label>
+        <select id="slotA2"></select>
+        <label>Team B — Player 1</label>
+        <select id="slotB1"></select>
+        <label>Team B — Player 2</label>
+        <select id="slotB2"></select>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeEditCourtModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveEditCourt()">Save lineup</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ============ SCORING ============ -->
     <section class="screen" id="screenScoring">
@@ -357,7 +419,6 @@ footer.app-footer .heart{color:var(--lime);}
     b.style.top=Math.random()*100+'%';
     field.appendChild(b);
   }
-  // a few faint paddle silhouettes via inline SVG
   const paddleSVG=(x,y,rot,scale)=>`
     <svg class="paddle-icon" style="left:${x}%; top:${y}%; transform:translate(-50%,-50%) rotate(${rot}deg) scale(${scale});" width="140" height="220" viewBox="0 0 140 220" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="70" cy="75" rx="62" ry="72" fill="none" stroke="#F4F2E9" stroke-width="6"/>
@@ -375,16 +436,19 @@ footer.app-footer .heart{color:var(--lime);}
    STATE
 =============================================================*/
 let openPlayers=[]; // {id,name,status:'waiting'|'playing', gamesPlayed, wins, losses}
-let openCourts=[]; // {courtNum, teamA:[playerIds], teamB:[playerIds], scoreA, scoreB, active}
+let openCourts=[]; // {courtNum, teamA:[playerIds], teamB:[playerIds], scoreA, scoreB, active, startTime}
 let openQueue=[]; // array of playerIds waiting
+let queueEnteredAt={}; // playerId -> timestamp when they entered the queue
 let openSettings={courts:2, points:11};
 let openActive=false;
-let scoringContext=null; // {source:'open', courtIdx}
+let scoringContext=null; // {courtIdx}
+let editingPlayerId=null;
+let editingCourtIdx=null;
 
 /* ============================================================
    UTIL
 =============================================================*/
-function uid(){return Math.random().toString(36).slice(2,9);}
+function uid(){return 'p'+Math.random().toString(36).slice(2,9);}
 function el(id){return document.getElementById(id);}
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -393,6 +457,17 @@ function showScreen(id){
 function playerName(id, list){
   const p=list.find(x=>x.id===id);
   return p?p.name:'—';
+}
+function formatDuration(ms){
+  if(ms<0) ms=0;
+  const totalSec=Math.floor(ms/1000);
+  const m=Math.floor(totalSec/60);
+  const s=totalSec%60;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+function enterQueue(ids){
+  const now=Date.now();
+  ids.forEach(id=>{ queueEnteredAt[id]=now; });
 }
 
 /* ============================================================
@@ -442,9 +517,10 @@ function startOpenPlay(){
 
   const shuffled=[...openPlayers].sort(()=>Math.random()-0.5);
   openQueue=shuffled.map(p=>p.id);
+  enterQueue(openQueue);
   openCourts=[];
   for(let i=1;i<=openSettings.courts;i++){
-    openCourts.push({courtNum:i, teamA:[], teamB:[], scoreA:0, scoreB:0, active:false});
+    openCourts.push({courtNum:i, teamA:[], teamB:[], scoreA:0, scoreB:0, active:false, startTime:null});
   }
   fillCourtsFromQueue();
   showScreen('screenOpenLive');
@@ -461,6 +537,7 @@ function fillCourtsFromQueue(){
       court.teamB=[four[2],four[3]];
       court.scoreA=0; court.scoreB=0;
       court.active=true;
+      court.startTime=Date.now();
     }
   });
 }
@@ -473,16 +550,26 @@ function renderOpenLive(){
     div.className='court-block';
     if(court.active){
       div.innerHTML=`
-        <div class="court-label"><span>Court ${court.courtNum}</span><span class="badge badge-open">In progress</span></div>
+        <div class="court-label">
+          <span class="label-left">Court ${court.courtNum} <span class="badge badge-open">In progress</span></span>
+          <span class="court-timer" data-court-idx="${idx}">0:00</span>
+        </div>
         <div class="team-line"><span>${court.teamA.map(id=>playerName(id,openPlayers)).join(' / ')}</span><span style="font-family:var(--mono)">${court.scoreA}</span></div>
         <div class="vs">vs</div>
         <div class="team-line"><span>${court.teamB.map(id=>playerName(id,openPlayers)).join(' / ')}</span><span style="font-family:var(--mono)">${court.scoreB}</span></div>
-        <div style="margin-top:10px;"><button class="btn btn-primary btn-sm" style="width:100%" onclick="openScoreCourt(${idx})">Score this game</button></div>
+        <div class="court-actions">
+          <button class="btn btn-primary btn-sm" style="flex:2" onclick="openScoreCourt(${idx})">Score this game</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditCourtModal(${idx})">Edit lineup</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearCourt(${idx})">Clear</button>
+        </div>
       `;
     } else {
       div.innerHTML=`
-        <div class="court-label"><span>Court ${court.courtNum}</span><span class="badge" style="background:rgba(244,242,233,0.08);color:rgba(244,242,233,0.5)">Waiting for players</span></div>
+        <div class="court-label"><span class="label-left">Court ${court.courtNum} <span class="badge" style="background:rgba(244,242,233,0.08);color:rgba(244,242,233,0.5)">Waiting for players</span></span></div>
         <div class="subtle" style="padding:6px 0;">Not enough players in queue yet.</div>
+        <div class="court-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEditCourtModal(${idx})">Assign players</button>
+        </div>
       `;
     }
     wrap.appendChild(div);
@@ -498,7 +585,7 @@ function renderOpenLive(){
       const c=document.createElement('div');
       c.className='queue-chip';
       const nextGroup = Math.floor(i/4)===0 && openCourtCount>0;
-      c.innerHTML=`<span class="num">#${i+1}</span>${playerName(id,openPlayers)}${nextGroup?' <span style="color:var(--lime)">↑next</span>':''}`;
+      c.innerHTML=`<span><span class="num">#${i+1}</span>${playerName(id,openPlayers)}${nextGroup?' <span style="color:var(--lime)">↑next</span>':''}</span><span class="wait-time" data-queue-id="${id}">waiting 0:00</span>`;
       qs.appendChild(c);
     });
   }
@@ -507,13 +594,215 @@ function renderOpenLive(){
   lp.innerHTML='';
   openPlayers.forEach(p=>{
     const c=document.createElement('span');
-    c.className='chip';
+    c.className='chip editable';
     const statusColor = p.status==='playing' ? 'var(--lime)' : 'rgba(244,242,233,0.5)';
-    c.innerHTML=`<span style="color:${statusColor}">●</span> ${p.name} <span style="opacity:.5">W${p.wins}</span>`;
+    c.innerHTML=`<span class="status-dot" style="color:${statusColor}">●</span> ${p.name} <span style="opacity:.5">W${p.wins}</span> <button class="edit-btn" onclick="openEditPlayerModal('${p.id}')">✎</button> <button class="remove-btn" onclick="removeLivePlayer('${p.id}')">×</button>`;
     lp.appendChild(c);
   });
+  el('opLiveCount').textContent=openPlayers.length;
+
+  tickTimers();
 }
 
+/* ============================================================
+   LIVE TIMERS (court progress + queue wait time)
+=============================================================*/
+function tickTimers(){
+  const now=Date.now();
+  document.querySelectorAll('.court-timer').forEach(elm=>{
+    const idx=parseInt(elm.getAttribute('data-court-idx'));
+    const court=openCourts[idx];
+    if(court && court.active && court.startTime){
+      elm.textContent=formatDuration(now-court.startTime);
+    }
+  });
+  document.querySelectorAll('.wait-time').forEach(elm=>{
+    const id=elm.getAttribute('data-queue-id');
+    const since=queueEnteredAt[id] || now;
+    elm.textContent='waiting '+formatDuration(now-since);
+  });
+}
+setInterval(()=>{
+  if(openActive && el('screenOpenLive').classList.contains('active')) tickTimers();
+}, 1000);
+
+/* ============================================================
+   MID-SESSION PLAYER MANAGEMENT
+=============================================================*/
+function addLivePlayer(){
+  const input=el('opLiveAddInput');
+  const name=input.value.trim();
+  if(!name) return;
+  const newPlayer={id:uid(), name, status:'waiting', gamesPlayed:0, wins:0, losses:0};
+  openPlayers.push(newPlayer);
+  openQueue.push(newPlayer.id);
+  enterQueue([newPlayer.id]);
+  input.value='';
+  fillCourtsFromQueue();
+  renderOpenLive();
+}
+
+function openEditPlayerModal(id){
+  editingPlayerId=id;
+  const p=openPlayers.find(x=>x.id===id);
+  if(!p) return;
+  el('editPlayerInput').value=p.name;
+  el('editPlayerModal').classList.add('show');
+}
+function closeEditPlayerModal(){
+  editingPlayerId=null;
+  el('editPlayerModal').classList.remove('show');
+}
+function saveEditPlayer(){
+  const newName=el('editPlayerInput').value.trim();
+  if(!newName || !editingPlayerId){ closeEditPlayerModal(); return; }
+  const p=openPlayers.find(x=>x.id===editingPlayerId);
+  if(p) p.name=newName;
+  closeEditPlayerModal();
+  renderOpenLive();
+}
+
+function removeLivePlayer(id){
+  const p=openPlayers.find(x=>x.id===id);
+  if(!p) return;
+  if(!confirm(`Remove ${p.name} from this session?`)) return;
+
+  if(p.status==='playing'){
+    const court=openCourts.find(c=>c.active && (c.teamA.includes(id) || c.teamB.includes(id)));
+    if(court){
+      const others=[...court.teamA, ...court.teamB].filter(pid=>pid!==id);
+      others.forEach(pid=>{
+        const op=openPlayers.find(x=>x.id===pid);
+        if(op) op.status='waiting';
+      });
+      openQueue.unshift(...others);
+      enterQueue(others);
+      court.active=false;
+      court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0; court.startTime=null;
+    }
+  }
+  openQueue=openQueue.filter(pid=>pid!==id);
+  delete queueEnteredAt[id];
+  openPlayers=openPlayers.filter(x=>x.id!==id);
+
+  fillCourtsFromQueue();
+  renderOpenLive();
+}
+
+/* ============================================================
+   PER-COURT LINEUP EDITING (swap / replace / remove specific court)
+=============================================================*/
+function openEditCourtModal(courtIdx){
+  editingCourtIdx=courtIdx;
+  const court=openCourts[courtIdx];
+  el('editCourtTitle').textContent=`Edit Court ${court.courtNum} lineup`;
+
+  // eligible pool: anyone currently on this court, plus anyone waiting
+  const currentIds=[...court.teamA, ...court.teamB];
+  const eligible=openPlayers.filter(p=> currentIds.includes(p.id) || p.status==='waiting');
+
+  const slotIds=['slotA1','slotA2','slotB1','slotB2'];
+  const currentVals=[court.teamA[0]||'', court.teamA[1]||'', court.teamB[0]||'', court.teamB[1]||''];
+
+  slotIds.forEach((slotId,i)=>{
+    const sel=el(slotId);
+    sel.innerHTML='<option value="">— empty —</option>' + eligible.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    sel.value=currentVals[i];
+  });
+
+  el('editCourtModal').classList.add('show');
+}
+function closeEditCourtModal(){
+  editingCourtIdx=null;
+  el('editCourtModal').classList.remove('show');
+}
+function saveEditCourt(){
+  if(editingCourtIdx===null) return;
+  const court=openCourts[editingCourtIdx];
+  const vals=[el('slotA1').value, el('slotA2').value, el('slotB1').value, el('slotB2').value];
+
+  const nonEmpty=vals.filter(v=>v!=='');
+  const uniqueCheck=new Set(nonEmpty);
+  if(uniqueCheck.size!==nonEmpty.length){
+    alert('Each player can only occupy one spot on this court.');
+    return;
+  }
+
+  const oldIds=[...court.teamA, ...court.teamB];
+
+  if(nonEmpty.length<4){
+    // not fully filled — treat as clearing/partial, park any newly-freed players back in queue
+    const removed=oldIds.filter(id=>!vals.includes(id));
+    removed.forEach(id=>{
+      const p=openPlayers.find(x=>x.id===id);
+      if(p) p.status='waiting';
+    });
+    openQueue.push(...removed.filter(id=>!openQueue.includes(id)));
+    enterQueue(removed);
+    court.active=false;
+    court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0; court.startTime=null;
+    closeEditCourtModal();
+    fillCourtsFromQueue();
+    renderOpenLive();
+    return;
+  }
+
+  const newIds=vals;
+  const changed = JSON.stringify([...oldIds].sort())!==JSON.stringify([...newIds].sort());
+
+  // players removed from this court go back to the queue
+  const removedFromCourt=oldIds.filter(id=>!newIds.includes(id));
+  removedFromCourt.forEach(id=>{
+    const p=openPlayers.find(x=>x.id===id);
+    if(p) p.status='waiting';
+  });
+  if(removedFromCourt.length){
+    openQueue.push(...removedFromCourt);
+    enterQueue(removedFromCourt);
+  }
+
+  // players newly added to this court get pulled out of the queue
+  const addedToCourt=newIds.filter(id=>!oldIds.includes(id));
+  addedToCourt.forEach(id=>{
+    const p=openPlayers.find(x=>x.id===id);
+    if(p) p.status='playing';
+    delete queueEnteredAt[id];
+  });
+  openQueue=openQueue.filter(id=>!addedToCourt.includes(id));
+
+  court.teamA=[newIds[0], newIds[1]];
+  court.teamB=[newIds[2], newIds[3]];
+  if(changed){
+    court.scoreA=0; court.scoreB=0;
+    court.active=true;
+    court.startTime=Date.now();
+  }
+
+  closeEditCourtModal();
+  fillCourtsFromQueue();
+  renderOpenLive();
+}
+
+function clearCourt(courtIdx){
+  const court=openCourts[courtIdx];
+  if(!court.active) return;
+  if(!confirm(`Clear Court ${court.courtNum}? Current players will go back to the queue.`)) return;
+  const ids=[...court.teamA, ...court.teamB];
+  ids.forEach(id=>{
+    const p=openPlayers.find(x=>x.id===id);
+    if(p) p.status='waiting';
+  });
+  openQueue.push(...ids);
+  enterQueue(ids);
+  court.active=false;
+  court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0; court.startTime=null;
+  fillCourtsFromQueue();
+  renderOpenLive();
+}
+
+/* ============================================================
+   SCORING FLOW
+=============================================================*/
 function openScoreCourt(courtIdx){
   const court=openCourts[courtIdx];
   scoringContext={courtIdx};
@@ -543,8 +832,9 @@ function completeOpenGame(courtIdx, winnerSide){
   });
 
   openQueue.push(...losers, ...winners);
+  enterQueue([...losers, ...winners]);
   court.active=false;
-  court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0;
+  court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0; court.startTime=null;
 
   fillCourtsFromQueue();
   showScreen('screenOpenLive');
@@ -589,7 +879,7 @@ function showOpenFinalStats(){
 
 function closeFinalStats(){
   openActive=false;
-  openPlayers=[]; openCourts=[]; openQueue=[];
+  openPlayers=[]; openCourts=[]; openQueue=[]; queueEnteredAt={};
   el('opPlayerList').innerHTML=''; el('opCount').textContent='0';
   el('sessionPill').classList.remove('show');
   showScreen('screenOpenSetup');
