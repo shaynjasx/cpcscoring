@@ -856,22 +856,31 @@ function openScoreCourt(courtIdx){
 
 function completeOpenGame(courtIdx, winnerSide){
   const court=openCourts[courtIdx];
-  const winners = winnerSide==='A' ? court.teamA : court.teamB;
-  const losers = winnerSide==='A' ? court.teamB : court.teamA;
+  const winners = winnerSide==='A' ? [...court.teamA] : [...court.teamB];
+  const losers = winnerSide==='A' ? [...court.teamB] : [...court.teamA];
 
-  winners.forEach(id=>{
+  [...winners,...losers].forEach(id=>{
     const p=openPlayers.find(x=>x.id===id);
-    if(p){ p.wins++; p.gamesPlayed++; p.status='waiting'; }
-  });
-  losers.forEach(id=>{
-    const p=openPlayers.find(x=>x.id===id);
-    if(p){ p.losses++; p.gamesPlayed++; p.status='waiting'; }
+    if(!p) return;
+    p.gamesPlayed++;
+    if(winners.includes(id)) p.wins++;
+    else p.losses++;
+    p.status='waiting';
   });
 
-  openQueue.push(...losers, ...winners);
-  enterQueue([...losers, ...winners]);
+  // Break up previous teams to encourage new partners
+  const mixed=[...winners,...losers].sort(()=>Math.random()-0.5);
+  mixed.forEach(id=>{
+    openQueue.push(id);
+    queueEnteredAt[id]=Date.now();
+  });
+
   court.active=false;
-  court.teamA=[]; court.teamB=[]; court.scoreA=0; court.scoreB=0; court.startTime=null;
+  court.teamA=[];
+  court.teamB=[];
+  court.scoreA=0;
+  court.scoreB=0;
+  court.startTime=null;
 
   fillCourtsFromQueue();
   showScreen('screenOpenLive');
