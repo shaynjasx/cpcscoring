@@ -378,7 +378,12 @@ footer.app-footer .heart{color:var(--lime);}
     <section class="screen" id="screenMatchHistory">
       <button class="back-link" onclick="showScreen('screenFinalStats')">← Back to Results</button>
       <div class="section-title" style="margin-top:0;">Match History</div>
-      <p class="subtle">Complete history of all games played.</p>
+      <p class="subtle">Browse every completed match.</p>
+      <input type="text" id="historySearch" placeholder="Search player..." oninput="renderFullHistory()">
+      <select id="historyCourtFilter" onchange="renderFullHistory()">
+        <option value="all">All Courts</option>
+      </select>
+      <div id="historySummary" class="subtle" style="margin:10px 0;"></div>
       <div id="fullMatchHistoryList"></div>
     </section>
 
@@ -1016,6 +1021,28 @@ function shareResults(){
 }
 
 
+
+function renderFullHistory(){
+  const q=(el('historySearch').value||'').toLowerCase();
+  const court=el('historyCourtFilter').value;
+  const list=el('fullMatchHistoryList');
+  let games=matchHistory.filter(m=>{
+    const names=[...m.winners,...m.losers].join(' ').toLowerCase();
+    return names.includes(q) && (court==='all'||String(m.court)===court);
+  });
+  el('historySummary').textContent=`${games.length} game(s) found`;
+  list.innerHTML=games.map(m=>`
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--lime)">
+      <span>Game #${m.game}</span><span>Court ${m.court}</span>
+    </div>
+    <div style="margin-top:8px;color:var(--lime);font-weight:700">🏆 ${m.winners.join(' & ')}</div>
+    <div style="text-align:center;opacity:.5;margin:6px 0">VS</div>
+    <div>${m.losers.join(' & ')}</div>
+    <div style="margin-top:8px;font-size:11px;opacity:.65">Score ${m.score} • ${formatDuration(m.duration)}</div>
+  </div>`).join('')||'<div class="card"><div class="subtle">No matches found.</div></div>';
+}
+
 function showAllMatchHistory(){
   const box=el('fullMatchHistoryList');
   if(matchHistory.length===0){
@@ -1034,7 +1061,11 @@ function showAllMatchHistory(){
       </div>
     `).join('');
   }
-  showScreen('screenMatchHistory');
+  const sel=el('historyCourtFilter');
+sel.innerHTML='<option value="all">All Courts</option>';
+[...new Set(matchHistory.map(m=>m.court))].sort().forEach(c=>{sel.innerHTML+=`<option value="${c}">Court ${c}</option>`;});
+renderFullHistory();
+showScreen('screenMatchHistory');
 }
 
 /* ============================================================
