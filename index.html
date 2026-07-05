@@ -273,7 +273,7 @@ footer.app-footer .heart{color:var(--lime);}
       <div class="card">
         <h3>Session settings</h3>
         <label>Court name</label>
-        <input type="text" id="courtName" placeholder="input what court did you booked">
+        <input type="text" id="courtName" placeholder="e.g. Pickle Escape Court 1">
         <label>Number of courts booked</label>
         <div class="stepper">
           <button type="button" onclick="stepCourts(-1)">−</button>
@@ -490,10 +490,42 @@ function addOpenPlayer(){
   openPlayers.push({id:uid(), name, status:'waiting', gamesPlayed:0, wins:0, losses:0});
   input.value='';
   renderOpenSetupList();
+
+(function(){
+if(!location.hash.startsWith("#results=")) return;
+try{
+const data=JSON.parse(decodeURIComponent(escape(atob(location.hash.substring(9)))));
+showScreen('screenFinalStats');
+document.querySelector('#screenFinalStats .section-title').textContent='Shared Session Results';
+document.querySelector('#screenFinalStats .subtle').textContent=(data.court?('📍 '+data.court+' • '):'')+data.date;
+let rows='<tr><th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">GP</th></tr>';
+data.players.forEach((p,i)=>rows+=`<tr><td>${i+1}</td><td>${p.name}</td><td class="num">${p.wins}</td><td class="num">${p.losses}</td><td class="num">${p.games}</td></tr>`);
+el('finalStatsTable').innerHTML=rows;
+el('finalStatsMvpCard').style.display='none';
+document.querySelectorAll('#screenFinalStats button').forEach(b=>b.style.display='none');
+}catch(e){console.error(e);}
+})();
+
 }
 function removeOpenPlayer(id){
   openPlayers=openPlayers.filter(p=>p.id!==id);
   renderOpenSetupList();
+
+(function(){
+if(!location.hash.startsWith("#results=")) return;
+try{
+const data=JSON.parse(decodeURIComponent(escape(atob(location.hash.substring(9)))));
+showScreen('screenFinalStats');
+document.querySelector('#screenFinalStats .section-title').textContent='Shared Session Results';
+document.querySelector('#screenFinalStats .subtle').textContent=(data.court?('📍 '+data.court+' • '):'')+data.date;
+let rows='<tr><th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">GP</th></tr>';
+data.players.forEach((p,i)=>rows+=`<tr><td>${i+1}</td><td>${p.name}</td><td class="num">${p.wins}</td><td class="num">${p.losses}</td><td class="num">${p.games}</td></tr>`);
+el('finalStatsTable').innerHTML=rows;
+el('finalStatsMvpCard').style.display='none';
+document.querySelectorAll('#screenFinalStats button').forEach(b=>b.style.display='none');
+}catch(e){console.error(e);}
+})();
+
 }
 function renderOpenSetupList(){
   const wrap=el('opPlayerList');
@@ -932,22 +964,32 @@ function finishMatch(){
 
 function shareResults(){
   const ranked=[...openPlayers].sort((a,b)=>b.wins-a.wins);
-  const payload={
-    court:openSettings.courtName,
-    players:ranked.map(p=>({name:p.name,w:p.wins,l:p.losses,gp:p.gamesPlayed}))
-  };
-  const url=location.origin+location.pathname+"#"+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-  if(navigator.share){
-    navigator.share({title:"CPC Session Results",url:url}).catch(()=>{});
-  }
-  navigator.clipboard.writeText(url);
-  alert("Shareable link copied to clipboard.");
+  const payload={court:openSettings.courtName,date:new Date().toLocaleString(),players:ranked.map(p=>({name:p.name,wins:p.wins,losses:p.losses,games:p.gamesPlayed}))};
+  const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const url=location.origin+location.pathname+"#results="+encoded;
+  navigator.clipboard.writeText(url).then(()=>alert("Results link copied!"));
 }
 
 /* ============================================================
    INIT
 =============================================================*/
 renderOpenSetupList();
+
+(function(){
+if(!location.hash.startsWith("#results=")) return;
+try{
+const data=JSON.parse(decodeURIComponent(escape(atob(location.hash.substring(9)))));
+showScreen('screenFinalStats');
+document.querySelector('#screenFinalStats .section-title').textContent='Shared Session Results';
+document.querySelector('#screenFinalStats .subtle').textContent=(data.court?('📍 '+data.court+' • '):'')+data.date;
+let rows='<tr><th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">GP</th></tr>';
+data.players.forEach((p,i)=>rows+=`<tr><td>${i+1}</td><td>${p.name}</td><td class="num">${p.wins}</td><td class="num">${p.losses}</td><td class="num">${p.games}</td></tr>`);
+el('finalStatsTable').innerHTML=rows;
+el('finalStatsMvpCard').style.display='none';
+document.querySelectorAll('#screenFinalStats button').forEach(b=>b.style.display='none');
+}catch(e){console.error(e);}
+})();
+
 </script>
 </body>
 </html>
