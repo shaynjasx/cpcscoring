@@ -162,8 +162,8 @@ select{appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns
 .court-actions{display:flex; gap:8px; margin-top:10px;}
 .court-actions .btn{flex:1;}
 
-.queue-strip{display:flex; gap:8px; overflow-x:auto; padding:4px 0 8px;}
-.queue-strip::-webkit-scrollbar{display:none;}
+.queue-strip{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px;max-height:300px;overflow-y:auto;}
+.queue-strip::-webkit-scrollbar{width:6px;}
 .queue-chip{
   flex:none; font-family:var(--mono); font-size:12px; padding:8px 12px; border-radius:10px;
   background:rgba(244,242,233,0.05); border:1px solid var(--line); white-space:nowrap;
@@ -272,6 +272,8 @@ footer.app-footer .heart{color:var(--lime);}
 
       <div class="card">
         <h3>Session settings</h3>
+        <label>Court name</label>
+        <input type="text" id="courtName" placeholder="e.g. Pickle Escape Court 1">
         <label>Number of courts booked</label>
         <div class="stepper">
           <button type="button" onclick="stepCourts(-1)">−</button>
@@ -292,7 +294,7 @@ footer.app-footer .heart{color:var(--lime);}
     <!-- ============ LIVE ============ -->
     <section class="screen" id="screenOpenLive">
       <button class="back-link" onclick="endOpenSession()">← End session</button>
-      <div class="section-title" style="margin-top:0;">Courts</div>
+      <div style="font-size:12px;color:var(--lime);margin-bottom:4px;" id="courtNameHeader"></div><div class="section-title" style="margin-top:0;">Courts</div>
       <div id="courtBlocks"></div>
 
       <div class="card">
@@ -393,6 +395,7 @@ footer.app-footer .heart{color:var(--lime);}
         <div style="font-size:20px; font-weight:700" id="finalStatsMvp"></div>
       </div>
 
+      <button class="btn btn-ghost" onclick="shareResults()" style="margin-bottom:10px;">Share Results / Copy Link</button>
       <button class="btn btn-primary" onclick="closeFinalStats()">Done</button>
     </section>
   </main>
@@ -439,7 +442,7 @@ let openPlayers=[]; // {id,name,status:'waiting'|'playing', gamesPlayed, wins, l
 let openCourts=[]; // {courtNum, teamA:[playerIds], teamB:[playerIds], scoreA, scoreB, active, startTime}
 let openQueue=[]; // array of playerIds waiting
 let queueEnteredAt={}; // playerId -> timestamp when they entered the queue
-let openSettings={courts:2, points:11};
+let openSettings={courts:2, points:11, courtName:''};
 let openActive=false;
 let scoringContext=null; // {courtIdx}
 let editingPlayerId=null;
@@ -513,6 +516,7 @@ function startOpenPlay(){
   if(!courts || courts<1) courts=1;
   openSettings.courts=courts;
   openSettings.points=parseInt(el('opPoints').value);
+  openSettings.courtName=(el('courtName').value||'').trim();
   openActive=true;
 
   const shuffled=[...openPlayers].sort(()=>Math.random()-0.5);
@@ -543,6 +547,7 @@ function fillCourtsFromQueue(){
 }
 
 function renderOpenLive(){
+  el('courtNameHeader').textContent=openSettings.courtName?('📍 '+openSettings.courtName):'';
   const wrap=el('courtBlocks');
   wrap.innerHTML='';
   openCourts.forEach((court,idx)=>{
@@ -596,7 +601,7 @@ function renderOpenLive(){
     const c=document.createElement('span');
     c.className='chip editable';
     const statusColor = p.status==='playing' ? 'var(--lime)' : 'rgba(244,242,233,0.5)';
-    c.innerHTML=`<span class="status-dot" style="color:${statusColor}">●</span> ${p.name} <span style="opacity:.5">W${p.wins}</span> <button class="edit-btn" onclick="openEditPlayerModal('${p.id}')">✎</button> <button class="remove-btn" onclick="removeLivePlayer('${p.id}')">×</button>`;
+    c.innerHTML=`<span class="status-dot" style="color:${statusColor}">●</span> ${p.name} <span style="opacity:.5">W${p.wins} • L${p.losses}</span> <button class="edit-btn" onclick="openEditPlayerModal('${p.id}')">✎</button> <button class="remove-btn" onclick="removeLivePlayer('${p.id}')">×</button>`;
     lp.appendChild(c);
   });
   el('opLiveCount').textContent=openPlayers.length;
@@ -922,6 +927,21 @@ function finishMatch(){
   const winnerSide = scoreA>scoreB ? 'A':'B';
   completeOpenGame(scoringContext.courtIdx, winnerSide);
   scoringContext=null;
+}
+
+
+function shareResults(){
+  const ranked=[...openPlayers].sort((a,b)=>b.wins-a.wins);
+  const payload={
+    court:openSettings.courtName,
+    players:ranked.map(p=>({name:p.name,w:p.wins,l:p.losses,gp:p.gamesPlayed}))
+  };
+  const url=location.origin+location.pathname+"#"+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  if(navigator.share){
+    navigator.share({title:"CPC Session Results",url:url}).catch(()=>{});
+  }
+  navigator.clipboard.writeText(url);
+  alert("Shareable link copied to clipboard.");
 }
 
 /* ============================================================
