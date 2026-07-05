@@ -374,6 +374,14 @@ footer.app-footer .heart{color:var(--lime);}
       <button class="btn btn-primary" onclick="finishMatch()" id="finishBtn" disabled>Finish game</button>
     </section>
 
+
+    <section class="screen" id="screenMatchHistory">
+      <button class="back-link" onclick="showScreen('screenFinalStats')">← Back to Results</button>
+      <div class="section-title" style="margin-top:0;">Match History</div>
+      <p class="subtle">Complete history of all games played.</p>
+      <div id="fullMatchHistoryList"></div>
+    </section>
+
     <!-- ============ FINAL STATS ============ -->
     <section class="screen" id="screenFinalStats">
       <div class="section-title" style="margin-top:0;">Final rankings</div>
@@ -390,12 +398,14 @@ footer.app-footer .heart{color:var(--lime);}
       </div>
 
       
-      <div class="card">
-        <h3>Match History</h3>
-        <div id="matchHistoryList"></div>
-      </div>
+      
+<div class="card">
+  <h3>Recent Matches</h3>
+  <div id="recentMatchHistory"></div>
+  <button class="btn btn-ghost" onclick="showAllMatchHistory()" style="margin-top:10px;">View All Match History →</button>
+</div>
 
-<button class="btn btn-ghost" onclick="shareResults()" style="margin-bottom:10px;">Share Results / Copy Link</button>
+<button class="btn btn-ghost onclick="shareResults()" style="margin-bottom:10px;">Share Results / Copy Link</button>
       <button class="btn btn-primary" onclick="closeFinalStats()">Done</button>
     </section>
   </main>
@@ -928,11 +938,11 @@ function showOpenFinalStats(){
     mvpCard.style.display='none';
   }
 
-  const mh=el('matchHistoryList');
+  const mh=el('recentMatchHistory');
   if(matchHistory.length===0){
     mh.innerHTML='<div class="subtle">No completed matches.</div>';
   }else{
-    mh.innerHTML=matchHistory.map(m=>`
+    mh.innerHTML=matchHistory.slice(0,3).map(m=>`
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:rgba(255,255,255,.03)">
         <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--lime)">
           <span>Game #${m.game}</span>
@@ -1003,6 +1013,28 @@ function shareResults(){
   const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   const url=location.origin+location.pathname+"#results="+encoded;
   navigator.clipboard.writeText(url).then(()=>alert("Results link copied!"));
+}
+
+
+function showAllMatchHistory(){
+  const box=el('fullMatchHistoryList');
+  if(matchHistory.length===0){
+    box.innerHTML='<div class="card"><div class="subtle">No completed matches.</div></div>';
+  }else{
+    box.innerHTML=matchHistory.map(m=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--lime)">
+          <span>Game #${m.game}</span>
+          <span>Court ${m.court}</span>
+        </div>
+        <div style="margin-top:10px;color:var(--lime);font-weight:700">🏆 ${m.winners.join(' & ')}</div>
+        <div style="text-align:center;margin:8px 0;opacity:.5">VS</div>
+        <div>${m.losers.join(' & ')}</div>
+        <div style="margin-top:8px;font-size:11px;opacity:.65">Score ${m.score} • ${formatDuration(m.duration)}</div>
+      </div>
+    `).join('');
+  }
+  showScreen('screenMatchHistory');
 }
 
 /* ============================================================
